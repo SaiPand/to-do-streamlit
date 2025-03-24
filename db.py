@@ -3,8 +3,8 @@ import streamlit as st
 
 conn = mysql.connector.connect(
     host="localhost",
-    user=st.secrets.connections.mysql.username,
-    password=st.secrets.connections.mysql.password,
+    user="user",
+    password="clave",
 )
 
 cursor = conn.cursor()

@@ -4,6 +4,8 @@ from mysql.connector import Error
 import time
 
 
+conn = st.connection("mysql", type="sql")
+
 ###### Configuration de MySQL #######
 
 
