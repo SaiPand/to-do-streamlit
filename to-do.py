@@ -1,7 +1,73 @@
 import streamlit as st
+import mysql.connector
+from mysql.connector import Error
 import time
 
 
+###### Configuration de MySQL #######
+
+
+def conectar_db():
+    try:
+        conn = mysql.connector.connect(
+            host=st.secrets.connections.mysql.host,
+            port=st.secrets.connections.mysql.port,
+            database=st.secrets.connections.mysql.database,
+            user=st.secrets.connections.mysql.username,
+            password=st.secrets.connections.mysql.password,
+        )
+        return conn
+    except Error as e:
+        st.error(f"Error de conexion: {e}")
+        return None
+
+
+#### CRUD ###
+def obtener():
+    conn = conectar_db()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM tareas")
+        tareas = cursor.fetchall()
+        conn.close()
+        return tareas
+    return []
+
+
+def agregar(texto):
+    conn = conectar_db()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO tarea (texto) VALUES (%s)", (texto,))
+        conn.commit()
+        conn.close()
+        return True
+    return False
+
+
+def actualizar(id, texto):
+    conn = conectar_db()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE tarea SET texto=%s WHERE id=%s", (texto, id))
+        conn.commit()
+        conn.close()
+        return True
+    return False
+
+
+def eliminar(id):
+    conn = conectar_db()
+    if conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM tarea WHERE id=%s", (id,))
+        conn.commit()
+        conn.close()
+        return True
+    return False
+
+
+## Codigo ##
 def page2():
     st.title("_Lista de tarea_")
 
@@ -14,51 +80,53 @@ pg = st.navigation(
 pg.run()
 
 
-if "anadir_tarea" not in st.session_state:
-    st.session_state.anadir_tarea = []
-
-
 if "tarea" not in st.session_state:
-    st.session_state.tarea = ""
+    st.session_state.tareas = obtener()
 
 with st.form("formulario_agregar_texto"):
-    st.session_state.tarea = st.text_input("", placeholder="Escribe tu siguiente tarea")
-    boton1 = st.form_submit_button("_Agregar_", type="secondary")
-
-
-if boton1:
-    if st.session_state.tarea:
-        st.session_state.anadir_tarea.append(st.session_state.tarea)
-        st.session_state.tarea = ""
+    nuevo_texto = st.text_input("", placeholder="Escribe tu siguiente tarea")
+    if st.form_submit_button("_Agregar_", type="secondary"):
+        if nuevo_texto:
+            agregar(nuevo_texto)
+            st.session_state.tareas = obtener()
+            st.toast("Tarea agregar")
+            time.sleep(0.5)
+        else:
+            st.toast("Debes introducir una tarea", icon="🚨")
+            time.sleep(0.5)
     else:
-        # st.error("Debes introducir una tarea")
-        st.toast("Debes introducir una tarea", icon="🚨")
-        time.sleep(0.5)
+        pass
 
 
-for i, tarea in enumerate(st.session_state.anadir_tarea):
+for i, tarea in enumerate(st.session_state.tareas):
 
-    col1, col2, col3, col4 = st.columns([2, 2, 3, 3])
+    col1, col2, col3 = st.columns([1, 3, 1])
 
+    with col1:
+        check = st.checkbox(tarea[1], key=f"check_{tarea[0]}")
     with col2:
-        check = st.checkbox(tarea, key=f"check_{i}_{tarea}")
-    with col3:
-
-        # if st.button("Edictar", key=f"edictar_{i}"):
-        with st.popover("✍️ Edictar Tarea"):
+        with st.popover(f"✍️ Edictar {tarea[1]}"):
             nuevo_texto = st.text_input(
-                f"tarea {i+1}", value=tarea, key=f"edictar_expanded_{i}"
+                "Texto", value=tarea[1], key=f"edictar_{tarea[0]}"
             )
-            if st.button("💾 Guardar Cambio", key=f"guardar_{i}"):
-                st.session_state.anadir_tarea[i] = nuevo_texto
-                st.toast("Tarea actualizada", icon="✅")
-                time.sleep(0)
+            if st.button("💾 Guardar Cambio", key=f"guardar_{tarea[0]}"):
+                if actualizar(tarea[0], nuevo_texto):
+                    st.session_state.tareas = obtener()
+                    st.success("Tarea actualizada")
+                else:
+                    st.error("Error al actualizar")
 
-    with col4:
-        if st.button("🗑️ Borrar", key=f"Borrar_{i}"):
+                # st.session_state.anadir_tarea[i] = nuevo_texto
+                # st.toast("Tarea actualizada", icon="✅")
+                # time.sleep(0)
 
-            del st.session_state.anadir_tarea[i]
-            st.rerun()
+    with col3:
+        if st.button("🗑️ Borrar", key=f"del_{tarea[0]}"):
+            if eliminar(tarea[0]):
+                st.session_state.tareas = obtener()
+                st.success("Tarea eliminada")
+            else:
+                st.error("Error al eliminar")
 
 bg_img = """
 <style>
