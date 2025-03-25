@@ -1,6 +1,8 @@
 import mysql.connector
 import streamlit as st
 
+conn = st.connection("mysql", type="sql")
+
 conn = mysql.connector.connect(
     host="localhost",
     user="user",
